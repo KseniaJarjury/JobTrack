@@ -2,7 +2,7 @@ const LEGACY_DATABASE_NAME = "jobtrack";
 const LEGACY_DATABASE_VERSION = 1;
 const LEGACY_STORE_NAME = "applications";
 const MIGRATION_KEY = "jobtrack-local-data-migrated";
-const API_BASE_URL = window.location.protocol === "file:" ? "http://localhost:5046" : "";
+const API_BASE_URL = "";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const allowedExtensions = new Set(["pdf", "doc", "docx", "odt"]);
 const fileFields = [
@@ -29,6 +29,7 @@ let objectUrls = [];
 let activityPeriod = "day";
 let historyApplicationId = "";
 let isReadOnlyFallback = false;
+let csrfToken = "";
 
 function openLegacyDatabase() {
     return new Promise((resolve, reject) => {
@@ -52,8 +53,28 @@ function getLegacyApplications(database) {
 }
 
 async function apiRequest(url, options = {}) {
-    const response = await fetch(`${API_BASE_URL}${url}`, options);
+    const headers = new Headers(options.headers || {});
+    if (options.method && !["GET", "HEAD", "OPTIONS"].includes(options.method.toUpperCase()) && csrfToken) {
+        headers.set("X-CSRF-TOKEN", csrfToken);
+    }
+    const response = await fetch(`${API_BASE_URL}${url}`, {
+        ...options,
+        headers,
+        credentials: "same-origin"
+    });
     if (!response.ok) {
+        if (response.status === 401 && !url.startsWith("/api/auth/")) {
+            applications = [];
+            interviews = [];
+            csrfToken = "";
+            showAuthentication("login", "Tu sesión venció. Volvé a ingresar para seguir usando JobTrack.");
+            try {
+                await refreshCsrfToken();
+            } catch (error) {
+                console.error("No se pudo renovar el token de seguridad:", error);
+                showAuthentication("login", `Tu sesión venció y no se pudo renovar la protección de acceso. Recargá la página. Detalle: ${error.message}`);
+            }
+        }
         let message = `La API respondió con el estado ${response.status}.`;
         try {
             const error = await response.json();
@@ -62,10 +83,77 @@ async function apiRequest(url, options = {}) {
         } catch {
             // Conserva el mensaje HTTP cuando la respuesta no contiene JSON.
         }
-        throw new Error(message);
+        const error = new Error(message);
+        error.status = response.status;
+        throw error;
     }
     if (response.status === 204) return null;
     return response.json();
+}
+
+async function refreshCsrfToken() {
+    const result = await apiRequest("/api/auth/csrf");
+    csrfToken = result.requestToken;
+}
+
+function showAuthentication(mode, message = "") {
+    document.getElementById("authScreen").hidden = false;
+    document.getElementById("appContainer").hidden = true;
+    const setupMode = mode === "setup";
+    document.getElementById("loginForm").hidden = setupMode;
+    document.getElementById("setupForm").hidden = !setupMode;
+    document.getElementById("authTitle").textContent = setupMode ? "Creá tu cuenta" : "Iniciá sesión";
+    document.getElementById("authDescription").textContent = setupMode
+        ? "Configurá tu cuenta personal para proteger tus postulaciones."
+        : "Ingresá para ver y organizar tus postulaciones.";
+    document.getElementById("loginError").hidden = true;
+    document.getElementById("setupError").hidden = true;
+    if (message) {
+        const error = document.getElementById(setupMode ? "setupError" : "loginError");
+        error.textContent = message;
+        error.hidden = false;
+    }
+}
+
+async function loadAuthenticatedApp(email) {
+    document.getElementById("authScreen").hidden = true;
+    document.getElementById("appContainer").hidden = false;
+    document.getElementById("accountLabel").textContent = email;
+
+    try {
+        await migrateLegacyApplications();
+        applications = await getApplications();
+        await getInterviews();
+        render();
+        resetForm();
+        const connectionStatus = document.getElementById("connectionStatus");
+        connectionStatus.textContent = "Conectada a la API de JobTrack.";
+        connectionStatus.className = "connection-status connected";
+        connectionStatus.hidden = false;
+    } catch (error) {
+        console.error("No se pudo cargar JobTrack:", error);
+        const connectionStatus = document.getElementById("connectionStatus");
+        try {
+            const legacyDatabase = await openLegacyDatabase();
+            try {
+                applications = await getLegacyApplications(legacyDatabase);
+            } finally {
+                legacyDatabase.close();
+            }
+            isReadOnlyFallback = true;
+            render();
+            resetForm();
+            document.getElementById("addJobButton").disabled = true;
+            document.getElementById("addJobButtonSecondary").disabled = true;
+            document.getElementById("emptyAddButton").disabled = true;
+            connectionStatus.textContent = `Sin conexión con la API. Se muestran ${applications.length} datos locales en modo de solo lectura; iniciá el backend para sincronizarlos. Detalle: ${error.message}`;
+        } catch (localError) {
+            console.error("No se pudieron leer los datos locales:", localError);
+            connectionStatus.textContent = `No se pudo conectar con la API ni recuperar los datos locales. Detalle: ${error.message}`;
+        }
+        connectionStatus.className = "connection-status disconnected";
+        connectionStatus.hidden = false;
+    }
 }
 
 function normalizeApplication(application) {
@@ -786,12 +874,100 @@ async function addHistoryEntry(event) {
     }
 }
 
+async function submitLogin(event) {
+    event.preventDefault();
+    const button = document.getElementById("loginButton");
+    const errorElement = document.getElementById("loginError");
+    button.disabled = true;
+    errorElement.hidden = true;
+    try {
+        const account = await apiRequest("/api/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                email: document.getElementById("loginEmail").value,
+                password: document.getElementById("loginPassword").value
+            })
+        });
+        await refreshCsrfToken();
+        document.getElementById("loginForm").reset();
+        await loadAuthenticatedApp(account.email);
+    } catch (error) {
+        errorElement.textContent = error.status === 401
+            ? "El correo o la contraseña no son correctos, o la cuenta está temporalmente bloqueada."
+            : error.message || "No se pudo iniciar sesión.";
+        errorElement.hidden = false;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function submitSetup(event) {
+    event.preventDefault();
+    const button = document.getElementById("setupButton");
+    const errorElement = document.getElementById("setupError");
+    const password = document.getElementById("setupPassword").value;
+    if (password !== document.getElementById("setupPasswordConfirmation").value) {
+        errorElement.textContent = "Las contraseñas no coinciden.";
+        errorElement.hidden = false;
+        return;
+    }
+
+    button.disabled = true;
+    errorElement.hidden = true;
+    try {
+        const account = await apiRequest("/api/auth/setup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                setupKey: document.getElementById("setupKey").value,
+                displayName: document.getElementById("setupDisplayName").value,
+                email: document.getElementById("setupEmail").value,
+                password
+            })
+        });
+        await refreshCsrfToken();
+        document.getElementById("setupForm").reset();
+        await loadAuthenticatedApp(account.email);
+    } catch (error) {
+        errorElement.textContent = error.status === 401
+            ? "El código inicial no es válido. Copiá el código vigente de la consola del backend."
+            : error.message || "No se pudo crear la cuenta.";
+        errorElement.hidden = false;
+    } finally {
+        button.disabled = false;
+    }
+}
+
+async function logout() {
+    const button = document.getElementById("logoutButton");
+    button.disabled = true;
+    try {
+        await apiRequest("/api/auth/logout", { method: "POST" });
+        csrfToken = "";
+        await refreshCsrfToken();
+        showAuthentication("login", "Cerraste sesión correctamente.");
+        document.getElementById("loginForm").reset();
+        applications = [];
+        interviews = [];
+    } catch (error) {
+        document.getElementById("connectionStatus").textContent = error.message || "No se pudo cerrar la sesión.";
+        document.getElementById("connectionStatus").className = "connection-status disconnected";
+        document.getElementById("connectionStatus").hidden = false;
+    } finally {
+        button.disabled = false;
+    }
+}
+
 function closeForm() {
     elements.formSection.hidden = true;
     resetForm();
 }
 
 document.getElementById("addJobButton").addEventListener("click", () => openForm());
+document.getElementById("logoutButton").addEventListener("click", logout);
+document.getElementById("loginForm").addEventListener("submit", submitLogin);
+document.getElementById("setupForm").addEventListener("submit", submitSetup);
 document.getElementById("addJobButtonSecondary").addEventListener("click", () => openForm());
 document.getElementById("emptyAddButton").addEventListener("click", () => openForm());
 document.getElementById("cancelButton").addEventListener("click", closeForm);
@@ -829,38 +1005,23 @@ elements.formSection.addEventListener("click", event => {
 
 async function initialize() {
     try {
-        await migrateLegacyApplications();
-        applications = await getApplications();
-        await getInterviews();
-        render();
-        resetForm();
-        const connectionStatus = document.getElementById("connectionStatus");
-        connectionStatus.textContent = "Conectada a la API de JobTrack.";
-        connectionStatus.className = "connection-status connected";
-        connectionStatus.hidden = false;
+        await refreshCsrfToken();
+        const status = await apiRequest("/api/auth/status");
+        if (status.setupRequired) {
+            showAuthentication("setup");
+            return;
+        }
+
+        try {
+            const account = await apiRequest("/api/auth/me");
+            await loadAuthenticatedApp(account.email);
+        } catch (error) {
+            if (error.status !== 401) throw error;
+            showAuthentication("login");
+        }
     } catch (error) {
         console.error("No se pudo iniciar JobTrack:", error);
-        const connectionStatus = document.getElementById("connectionStatus");
-        try {
-            const legacyDatabase = await openLegacyDatabase();
-            try {
-                applications = await getLegacyApplications(legacyDatabase);
-            } finally {
-                legacyDatabase.close();
-            }
-            isReadOnlyFallback = true;
-            render();
-            resetForm();
-            document.getElementById("addJobButton").disabled = true;
-            document.getElementById("addJobButtonSecondary").disabled = true;
-            document.getElementById("emptyAddButton").disabled = true;
-            connectionStatus.textContent = `Sin conexión con la API. Se muestran ${applications.length} datos locales en modo de solo lectura; iniciá el backend para sincronizarlos. Detalle: ${error.message}`;
-        } catch (localError) {
-            console.error("No se pudieron leer los datos locales:", localError);
-            connectionStatus.textContent = `No se pudo conectar con la API ni recuperar los datos locales. Detalle: ${error.message}`;
-        }
-        connectionStatus.className = "connection-status disconnected";
-        connectionStatus.hidden = false;
+        showAuthentication("login", `No se pudo conectar con el backend. Iniciá JobTrack con dotnet run e ingresá desde la dirección que muestra la consola. Detalle: ${error.message}`);
     }
 }
 

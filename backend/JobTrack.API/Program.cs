@@ -1,7 +1,10 @@
 using JobTrack.API.Api;
 using JobTrack.API.Data;
+using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
+using System.Threading.RateLimiting;
 
 var contentRootPath = Directory.GetCurrentDirectory();
 var frontendPath = Path.GetFullPath(Path.Combine(contentRootPath, "..", "..", "frontend"));
@@ -19,21 +22,70 @@ if (string.IsNullOrWhiteSpace(connectionString))
 
 builder.Services.AddDbContext<JobTrackDbContext>(options => options.UseSqlServer(connectionString));
 builder.Services.AddOpenApi();
-if (builder.Environment.IsDevelopment())
+builder.Services
+    .AddIdentityCore<JobTrackUser>(options =>
+    {
+        options.User.RequireUniqueEmail = true;
+        options.Password.RequiredLength = 12;
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        options.Lockout.AllowedForNewUsers = true;
+    })
+    .AddEntityFrameworkStores<JobTrackDbContext>();
+builder.Services
+    .AddAuthentication(CookieAuthenticationDefaults.AuthenticationScheme)
+    .AddCookie(options =>
+    {
+        options.Cookie.Name = "JobTrack.Auth";
+        options.Cookie.HttpOnly = true;
+        options.Cookie.IsEssential = true;
+        options.Cookie.SameSite = SameSiteMode.Strict;
+        options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+        options.ExpireTimeSpan = TimeSpan.FromHours(8);
+        options.SlidingExpiration = true;
+        options.Events.OnRedirectToLogin = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        };
+        options.Events.OnRedirectToAccessDenied = context =>
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        };
+    });
+builder.Services.AddAuthorization(options =>
+    options.FallbackPolicy = new AuthorizationPolicyBuilder().RequireAuthenticatedUser().Build());
+builder.Services.AddAntiforgery(options =>
 {
-    builder.Services.AddCors(options => options.AddPolicy("LocalFrontend", policy =>
-        policy.WithOrigins("null", "http://localhost:5500", "http://127.0.0.1:5500")
-            .AllowAnyHeader()
-            .AllowAnyMethod()));
-}
+    options.HeaderName = "X-CSRF-TOKEN";
+    options.Cookie.Name = "JobTrack.Antiforgery";
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict;
+    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+});
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("authentication", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0,
+                AutoReplenishment = true
+            }));
+});
+var initialSetupKey = new InitialSetupKey();
+builder.Services.AddSingleton(initialSetupKey);
 
 var app = builder.Build();
-
-if (app.Environment.IsDevelopment())
-{
-    app.MapOpenApi();
-    app.UseCors("LocalFrontend");
-}
 
 if (frontendProvider is not null)
 {
@@ -41,15 +93,30 @@ if (frontendProvider is not null)
     app.UseStaticFiles(new StaticFileOptions { FileProvider = frontendProvider });
 }
 
+if (app.Environment.IsDevelopment())
+{
+    app.MapOpenApi();
+}
+
+app.UseAuthentication();
+app.UseAuthorization();
+app.UseAntiforgery();
+app.UseRateLimiter();
+
 app.UseHttpsRedirection();
 
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<JobTrackDbContext>();
     await db.Database.MigrateAsync();
+    if (!await db.Users.AnyAsync())
+    {
+        var setupKey = initialSetupKey.Generate();
+        app.Logger.LogWarning("Cuenta inicial pendiente. Código temporal de configuración (ingresalo en JobTrack): {SetupKey}", setupKey);
+    }
 }
 
-app.MapGet("/api/health", () => Results.Ok(new { status = "ok" }));
+app.MapGet("/api/health", () => Results.Ok(new { status = "ok" })).AllowAnonymous();
 app.MapGet("/api/profile", async (JobTrackDbContext db, CancellationToken cancellationToken) =>
 {
     var profile = await db.UserProfiles
@@ -69,6 +136,7 @@ app.MapGet("/api/profile", async (JobTrackDbContext db, CancellationToken cancel
         .SingleAsync(cancellationToken);
     return Results.Ok(profile);
 });
+app.MapAuthenticationEndpoints(initialSetupKey);
 app.MapApplicationEndpoints();
 
 app.Run();

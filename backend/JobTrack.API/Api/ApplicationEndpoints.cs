@@ -45,7 +45,8 @@ public static class ApplicationEndpoints
 
     public static RouteGroupBuilder MapApplicationEndpoints(this IEndpointRouteBuilder endpoints)
     {
-        var group = endpoints.MapGroup("/api/applications");
+        var group = endpoints.MapGroup("/api/applications").ValidateAntiforgery();
+        var interviewGroup = endpoints.MapGroup("/api/interviews").ValidateAntiforgery();
 
         group.MapGet("/", async (JobTrackDbContext db, CancellationToken cancellationToken) =>
         {
@@ -70,10 +71,10 @@ public static class ApplicationEndpoints
         group.MapPost("/{id:guid}/reminders/complete", CompleteReminder);
         group.MapGet("/{id:guid}/documents/{documentId:guid}", DownloadDocument);
 
-        endpoints.MapGet("/api/interviews", GetInterviews);
-        endpoints.MapPost("/api/applications/{id:guid}/interviews", CreateInterview);
-        endpoints.MapPut("/api/interviews/{interviewId:guid}", UpdateInterview);
-        endpoints.MapDelete("/api/interviews/{interviewId:guid}", DeleteInterview);
+        interviewGroup.MapGet("/", GetInterviews);
+        group.MapPost("/{id:guid}/interviews", CreateInterview);
+        interviewGroup.MapPut("/{interviewId:guid}", UpdateInterview);
+        interviewGroup.MapDelete("/{interviewId:guid}", DeleteInterview);
 
         return group;
     }

@@ -24,6 +24,35 @@ body {
 button, input, select, textarea { font: inherit; }
 
 .app-container { display: flex; min-height: 100vh; }
+[hidden] { display: none !important; }
+
+.auth-screen {
+    display: grid;
+    min-height: 100vh;
+    place-items: center;
+    padding: 24px;
+}
+
+.auth-card {
+    width: min(100%, 440px);
+    padding: 34px;
+    border: 1px solid #efeff4;
+    border-radius: 16px;
+    background: #fff;
+    box-shadow: 0 12px 40px rgba(37, 32, 75, 0.08);
+}
+
+.auth-card .logo { display: inline-block; margin: 0 0 30px; }
+.auth-card h1 { margin: 0; font-family: 'Manrope', sans-serif; font-size: 28px; font-weight: 800; }
+.auth-description { margin: 8px 0 24px; color: var(--muted); font-size: 13px; }
+.auth-field { display: grid; gap: 7px; margin-bottom: 15px; }
+.auth-field label { color: #555469; font-size: 12px; font-weight: 700; }
+.auth-field .form-control { min-height: 44px; border-color: #e7e6ee; border-radius: 8px; }
+.auth-field .form-control:focus { border-color: #9a87f3; box-shadow: 0 0 0 3px rgba(103, 71, 232, .1); }
+.auth-field small { color: var(--muted); font-size: 11px; line-height: 1.5; }
+.auth-submit { width: 100%; margin-top: 6px; padding: 11px; border-radius: 8px; font-size: 13px; font-weight: 700; }
+.auth-error { margin: 12px 0; color: #bd3833; font-size: 12px; }
+.auth-footnote { margin: 20px 0 0; color: #9998a7; font-size: 11px; text-align: center; }
 
 .sidebar {
     position: fixed;
@@ -91,6 +120,10 @@ button, input, select, textarea { font: inherit; }
     gap: 24px;
     margin-bottom: 30px;
 }
+
+.header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
+.account-label { max-width: 190px; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.header-actions .btn { padding: 11px 15px; border-radius: 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 
 .eyebrow {
     margin: 0 0 8px;
@@ -307,6 +340,9 @@ button, input, select, textarea { font: inherit; }
     .dashboard-header { align-items: flex-start; flex-direction: column; gap: 15px; margin-bottom: 22px; }
     .dashboard-header h1 { font-size: 24px; }
     .dashboard-header .btn { width: 100%; }
+    .header-actions { width: 100%; flex-wrap: wrap; }
+    .header-actions .account-label { flex: 1 1 100%; max-width: 100%; }
+    .header-actions .btn { width: auto; flex: 1; }
     .stats-container { gap: 10px; margin-bottom: 18px; }
     .stat-card { min-height: 130px; padding: 14px; }
     .stat-card h2 { font-size: 24px; }
@@ -338,5 +374,3 @@ button, input, select, textarea { font: inherit; }
     .field.full-width { grid-column: auto; }
     .form-actions .btn { flex: 1; }
 }
-
-[hidden] { display: none !important; }

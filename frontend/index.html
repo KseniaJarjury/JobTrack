@@ -9,7 +9,54 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div class="app-container">
+    <section class="auth-screen" id="authScreen" aria-labelledby="authTitle">
+        <div class="auth-card">
+            <a class="logo" href="#" aria-label="JobTrack">JobTrack<span>.</span></a>
+            <p class="eyebrow">TU ESPACIO DE BÚSQUEDA</p>
+            <h1 id="authTitle">Iniciá sesión</h1>
+            <p class="auth-description" id="authDescription">Ingresá para ver y organizar tus postulaciones.</p>
+            <form id="loginForm">
+                <div class="auth-field">
+                    <label for="loginEmail">Correo electrónico</label>
+                    <input class="form-control" id="loginEmail" type="email" autocomplete="username" maxlength="254" required>
+                </div>
+                <div class="auth-field">
+                    <label for="loginPassword">Contraseña</label>
+                    <input class="form-control" id="loginPassword" type="password" autocomplete="current-password" maxlength="256" required>
+                </div>
+                <p class="auth-error" id="loginError" role="alert" hidden></p>
+                <button class="btn btn-primary auth-submit" id="loginButton" type="submit">Ingresar</button>
+            </form>
+            <form id="setupForm" hidden>
+                <div class="auth-field">
+                    <label for="setupKey">Código inicial del backend</label>
+                    <input class="form-control" id="setupKey" type="password" autocomplete="off" maxlength="128" required>
+                    <small>Copiá el código temporal que aparece en la consola donde ejecutaste JobTrack.</small>
+                </div>
+                <div class="auth-field">
+                    <label for="setupDisplayName">Tu nombre</label>
+                    <input class="form-control" id="setupDisplayName" type="text" autocomplete="name" maxlength="120" required>
+                </div>
+                <div class="auth-field">
+                    <label for="setupEmail">Correo electrónico</label>
+                    <input class="form-control" id="setupEmail" type="email" autocomplete="username" maxlength="254" required>
+                </div>
+                <div class="auth-field">
+                    <label for="setupPassword">Contraseña</label>
+                    <input class="form-control" id="setupPassword" type="password" autocomplete="new-password" minlength="12" maxlength="256" required>
+                    <small>Usá al menos 12 caracteres, con mayúscula, minúscula, número y símbolo.</small>
+                </div>
+                <div class="auth-field">
+                    <label for="setupPasswordConfirmation">Repetí la contraseña</label>
+                    <input class="form-control" id="setupPasswordConfirmation" type="password" autocomplete="new-password" minlength="12" maxlength="256" required>
+                </div>
+                <p class="auth-error" id="setupError" role="alert" hidden></p>
+                <button class="btn btn-primary auth-submit" id="setupButton" type="submit">Crear mi cuenta</button>
+            </form>
+            <p class="auth-footnote">Cuenta personal · No hay registro público</p>
+        </div>
+    </section>
+    <div class="app-container" id="appContainer" hidden>
         <aside class="sidebar">
             <a class="logo" href="#inicio" aria-label="JobTrack, inicio">JobTrack<span>.</span></a>
             <nav aria-label="Navegación principal">
@@ -30,7 +77,11 @@
                     <h1>Hola, ¡vamos por ese próximo paso!</h1>
                     <p class="subtitle">Organizá tus postulaciones y seguí cada oportunidad.</p>
                 </div>
-                <button class="btn btn-primary" id="addJobButton" type="button">＋ Nueva postulación</button>
+                <div class="header-actions">
+                    <span class="account-label" id="accountLabel"></span>
+                    <button class="btn btn-light" id="logoutButton" type="button">Cerrar sesión</button>
+                    <button class="btn btn-primary" id="addJobButton" type="button">＋ Nueva postulación</button>
+                </div>
             </header>
             <p class="connection-status" id="connectionStatus" role="status" hidden></p>
 

@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 
 namespace JobTrack.API.Data;
 
-public sealed class JobTrackDbContext(DbContextOptions<JobTrackDbContext> options) : DbContext(options)
+public sealed class JobTrackDbContext(DbContextOptions<JobTrackDbContext> options) : IdentityDbContext<JobTrackUser>(options)
 {
     public static readonly Guid LocalUserId = Guid.Parse("a85dba15-fb20-4bdb-92b8-f8a0a13c4e1b");
 
@@ -20,6 +21,12 @@ public sealed class JobTrackDbContext(DbContextOptions<JobTrackDbContext> option
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.Entity<JobTrackUser>()
+            .HasIndex(user => user.AccountSlot)
+            .IsUnique();
+
         modelBuilder.Entity<UserProfile>(entity =>
         {
             entity.ToTable("Users");
