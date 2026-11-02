@@ -3,7 +3,15 @@ using JobTrack.API.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.FileProviders;
 
-var builder = WebApplication.CreateBuilder(args);
+var contentRootPath = Directory.GetCurrentDirectory();
+var frontendPath = Path.GetFullPath(Path.Combine(contentRootPath, "..", "..", "frontend"));
+var frontendProvider = Directory.Exists(frontendPath) ? new PhysicalFileProvider(frontendPath) : null;
+var builder = WebApplication.CreateBuilder(new WebApplicationOptions
+{
+    Args = args,
+    ContentRootPath = contentRootPath,
+    WebRootPath = frontendProvider is null ? null : frontendPath
+});
 
 var connectionString = builder.Configuration.GetConnectionString("JobTrack");
 if (string.IsNullOrWhiteSpace(connectionString))
@@ -18,11 +26,6 @@ if (builder.Environment.IsDevelopment())
             .AllowAnyHeader()
             .AllowAnyMethod()));
 }
-
-var frontendPath = Path.GetFullPath(Path.Combine(builder.Environment.ContentRootPath, "..", "..", "frontend"));
-var frontendProvider = Directory.Exists(frontendPath) ? new PhysicalFileProvider(frontendPath) : null;
-if (frontendProvider is not null)
-    builder.WebHost.UseWebRoot(frontendPath);
 
 var app = builder.Build();
 

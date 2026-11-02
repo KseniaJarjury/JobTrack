@@ -9,6 +9,14 @@ Aplicacion web para organizar postulaciones laborales, documentos enviados, comu
 
 La configuracion local usa la base `JobTrackDb` en `(localdb)\MSSQLLocalDB`. Al iniciar la API, Entity Framework Core aplica las migraciones pendientes automaticamente.
 
+Para instalar LocalDB en Windows, descarga el medio de SQL Server Express, selecciona la caracteristica LocalDB y verifica la instancia desde PowerShell:
+
+```powershell
+sqllocaldb info MSSQLLocalDB
+```
+
+Consulta la [guia oficial de instalacion de SQL Server Express LocalDB](https://learn.microsoft.com/es-es/sql/database-engine/configure-windows/sql-server-express-localdb).
+
 ## Ejecutar en Windows
 
 Desde la carpeta del proyecto:
