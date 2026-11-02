@@ -1,0 +1,29 @@
+# .NET build output
+[Bb]in/
+[Oo]bj/
+.vs/
+*.user
+*.suo
+
+# Local editor settings
+.vscode/
+
+# Local configuration and secrets
+.env
+.env.*
+appsettings.*.local.json
+secrets.json
+
+# Local databases and uploaded files
+*.mdf
+*.ldf
+*.db
+*.sqlite
+*.sqlite3
+uploads/
+storage/
+App_Data/
+
+# OS-generated files
+Thumbs.db
+.DS_Store
