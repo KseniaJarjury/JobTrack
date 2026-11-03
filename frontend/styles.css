@@ -116,7 +116,7 @@ button, input, select, textarea { font: inherit; }
 .account-panel .account-label { display: block; max-width: 100%; }
 .account-panel .btn { width: 100%; padding: 9px 12px; border: 1px solid #e7e6ee; border-radius: 8px; color: #555469; font-size: 12px; font-weight: 700; text-align: left; }
 .account-panel .btn:hover, .account-panel .btn:focus { border-color: #d6d2e3; background: #f7f6fa; color: #38374d; }
-.sidebar-footer { margin-top: auto; color: #a0a0ad; font-size: 11px; line-height: 1.6; }
+.sidebar-footer { margin-top: 8px; color: #a0a0ad; font-size: 11px; line-height: 1.6; }
 
 .main-content {
     width: calc(100% - 250px);
