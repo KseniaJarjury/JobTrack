@@ -953,7 +953,9 @@ async function logout() {
         applications = [];
         interviews = [];
     } catch (error) {
-        document.getElementById("connectionStatus").textContent = error.message || "No se pudo cerrar la sesión.";
+        document.getElementById("connectionStatus").textContent = error instanceof TypeError
+            ? "No se pudo contactar con el servidor. Para cerrar la sesión, mantené JobTrack abierto desde la dirección que muestra «dotnet run» y volvé a intentar."
+            : error.message || "No se pudo cerrar la sesión.";
         document.getElementById("connectionStatus").className = "connection-status disconnected";
         document.getElementById("connectionStatus").hidden = false;
     } finally {
