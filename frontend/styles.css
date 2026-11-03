@@ -104,6 +104,18 @@ button, input, select, textarea { font: inherit; }
 
 .sidebar-note strong { font-size: 13px; }
 .sidebar-note p { margin: 7px 0 0; color: var(--muted); font-size: 12px; line-height: 1.6; }
+.account-panel {
+    display: grid;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 17px;
+    border-top: 1px solid #eeedf3;
+}
+.account-info { min-width: 0; }
+.account-caption { display: block; margin-bottom: 5px; color: #a0a0ad; font-size: 10px; }
+.account-panel .account-label { display: block; max-width: 100%; }
+.account-panel .btn { width: 100%; padding: 9px 12px; border: 1px solid #e7e6ee; border-radius: 8px; color: #555469; font-size: 12px; font-weight: 700; text-align: left; }
+.account-panel .btn:hover, .account-panel .btn:focus { border-color: #d6d2e3; background: #f7f6fa; color: #38374d; }
 .sidebar-footer { margin-top: auto; color: #a0a0ad; font-size: 11px; line-height: 1.6; }
 
 .main-content {
@@ -122,7 +134,7 @@ button, input, select, textarea { font: inherit; }
 }
 
 .header-actions { display: flex; align-items: center; justify-content: flex-end; gap: 10px; }
-.account-label { max-width: 190px; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.account-label { overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
 .header-actions .btn { padding: 11px 15px; border-radius: 9px; font-size: 12px; font-weight: 700; white-space: nowrap; }
 
 .eyebrow {
@@ -336,12 +348,15 @@ button, input, select, textarea { font: inherit; }
     .sidebar nav { display: flex; gap: 5px; }
     .menu-item { padding: 9px 11px; font-size: 12px; }
     .sidebar-note, .sidebar-footer { display: none; }
+    .account-panel { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; padding-top: 11px; }
+    .account-info { flex: 1; }
+    .account-panel .account-label { max-width: 100%; }
+    .account-panel .btn { width: auto; flex: 0 0 auto; padding: 8px 11px; text-align: center; }
     .main-content { width: 100%; margin: 0; padding: 25px 16px 30px; }
     .dashboard-header { align-items: flex-start; flex-direction: column; gap: 15px; margin-bottom: 22px; }
     .dashboard-header h1 { font-size: 24px; }
     .dashboard-header .btn { width: 100%; }
     .header-actions { width: 100%; flex-wrap: wrap; }
-    .header-actions .account-label { flex: 1 1 100%; max-width: 100%; }
     .header-actions .btn { width: auto; flex: 1; }
     .stats-container { gap: 10px; margin-bottom: 18px; }
     .stat-card { min-height: 130px; padding: 14px; }

@@ -118,7 +118,9 @@ function showAuthentication(mode, message = "") {
 async function loadAuthenticatedApp(email) {
     document.getElementById("authScreen").hidden = true;
     document.getElementById("appContainer").hidden = false;
-    document.getElementById("accountLabel").textContent = email;
+    const accountLabel = document.getElementById("accountLabel");
+    accountLabel.textContent = email;
+    accountLabel.title = email;
 
     try {
         await migrateLegacyApplications();
